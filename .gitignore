@@ -1,0 +1,22 @@
+# Java / Maven
+backend/target/
+*.class
+
+# Local database and uploaded photos (your data, not code)
+backend/data/
+backend/uploads/
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+
+# Editors and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
