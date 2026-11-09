@@ -10,6 +10,7 @@ import {
   groupByCategory,
   isInLook,
   lookFromOutfit,
+  lookStatus,
   lookTotals,
   removeFromLook,
 } from '../utils/mixer.js'
@@ -29,6 +30,7 @@ export default function MixMatch({ notify, canEdit = true }) {
   const racks = useMemo(() => groupByCategory(items ?? []), [items])
   const categories = LAYER_ORDER.filter((c) => racks[c].length > 0)
   const totals = lookTotals(look)
+  const status = lookStatus(look)
 
   useEffect(() => {
     Promise.all([listItems(), listOutfits()])
@@ -191,6 +193,7 @@ export default function MixMatch({ notify, canEdit = true }) {
         <form id="look" className="look-receipt" onSubmit={handleSave} aria-labelledby="look-heading">
           <div className="look-head">
             <h3 id="look-heading">This look</h3>
+            <span className={`look-status ${status.complete ? 'is-complete' : ''}`}>{status.label}</span>
             {look.length > 0 && (
               <button type="button" className="btn btn-small btn-quiet" onClick={() => setLook([])}>
                 Clear

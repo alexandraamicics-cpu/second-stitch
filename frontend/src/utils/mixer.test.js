@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addToLook, fillGaps, groupByCategory, lookFromOutfit, lookTotals, removeFromLook } from './mixer.js'
+import { addToLook, fillGaps, groupByCategory, lookFromOutfit, lookStatus, lookTotals, removeFromLook } from './mixer.js'
 
 const top1 = { id: 1, category: 'TOP', pricePaid: 180, estimatedRetail: 1490, savings: 1310, costPerWear: 20 }
 const top2 = { id: 2, category: 'TOP', pricePaid: 120, estimatedRetail: null, savings: 0, costPerWear: 40 }
@@ -90,5 +90,14 @@ describe('lookFromOutfit', () => {
     const worn = { ...loafers, wearCount: 9 }
     const look = lookFromOutfit({ items: [loafers, dress] }, [top1, dress, worn])
     expect(look).toEqual([dress, worn])
+  })
+})
+
+describe('lookStatus', () => {
+  it('says what the look still needs', () => {
+    expect(lookStatus([]).label).toBe('Empty')
+    expect(lookStatus([top1]).label).toBe('Needs a bottom')
+    expect(lookStatus([top1, jeans]).label).toBe('Needs shoes')
+    expect(lookStatus([dress, loafers])).toEqual({ label: 'Complete', complete: true })
   })
 })

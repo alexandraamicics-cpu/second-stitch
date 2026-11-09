@@ -1,6 +1,6 @@
 #FileLock
-#Mon Nov 09 09:49:20 CST 2026
+#Mon Nov 09 15:30:34 CST 2026
 hostName=LAPTOP-IABMCVJS
-id=1a1bdfee10d4e1d1e5b92d0e7ec2f9bc42b1243d857
+id=1a1bf374b13cf5d787dca0f332aa0b4abf977121ff2
 method=file
-server=192.168.1.7\:54326
+server=192.168.1.7\:52888

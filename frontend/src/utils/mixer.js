@@ -89,3 +89,16 @@ export function lookFromOutfit(outfit, items) {
   const ids = new Set(outfit.items.map((piece) => piece.id))
   return items.filter((item) => ids.has(item.id)).sort(byLayer)
 }
+
+/** A short label for the look: what's still missing, or "Complete". */
+export function lookStatus(items) {
+  const has = (category) => items.some((piece) => piece.category === category)
+  if (items.length === 0) return { label: 'Empty', complete: false }
+  if (!(has('DRESS') || (has('TOP') && has('BOTTOM')))) {
+    if (has('TOP')) return { label: 'Needs a bottom', complete: false }
+    if (has('BOTTOM')) return { label: 'Needs a top', complete: false }
+    return { label: 'Needs a top and bottom, or a dress', complete: false }
+  }
+  if (!has('SHOES')) return { label: 'Needs shoes', complete: false }
+  return { label: 'Complete', complete: true }
+}

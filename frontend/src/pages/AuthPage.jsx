@@ -89,16 +89,13 @@ export default function AuthPage({ onAuthed, initialMode = 'login', initialMessa
   return (
     <div className="auth">
       <div className="auth-intro">
-        <h1 className="wordmark">
-          Second <span>Stitch</span>
-        </h1>
+        <h1>Track what you thrift.</h1>
         <p className="auth-tagline">
-          Track what you thrift, mix outfits from what you own, and see what every rewear saves you.
+          Log your finds, mix outfits from what you own, and see what every rewear saves you.
         </p>
       </div>
 
       <form className="auth-card" onSubmit={handleSubmit} noValidate aria-labelledby="auth-heading">
-        <span className="tag-hole" aria-hidden="true" />
         <h2 id="auth-heading">{HEADINGS[mode]}</h2>
 
         {mode === 'sent' && <p className="auth-info">{info}</p>}

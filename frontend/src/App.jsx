@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getMe, hasToken, logOut, verifyEmail } from './api.js'
+import Logo from './components/Logo.jsx'
 import AuthPage from './pages/AuthPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import { takeEmailLink } from './utils/emailLink.js'
@@ -112,18 +113,49 @@ export default function App() {
     </p>
   )
 
+  // The yellow plaid band across the top of every screen. Tabs only once you're logged in.
+  const band = (tabs) => (
+    <header className="band plaid">
+      <div className="shell band-inner">
+        <Logo />
+        {tabs && (
+          <nav aria-label="Sections">
+            <ul className="tabs">
+              {TABS.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    className="tab"
+                    aria-current={tab === t.id ? 'page' : undefined}
+                    onClick={() => setTab(t.id)}
+                  >
+                    {t.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+      </div>
+    </header>
+  )
+
   if (status === 'checking' || status === 'verifying') {
     return (
-      <p className="quiet app-message">
-        {status === 'verifying' ? 'Confirming your email…' : 'Opening your closet…'}
-      </p>
+      <>
+        {band(false)}
+        <p className="quiet app-message">
+          {status === 'verifying' ? 'Confirming your email…' : 'Opening your closet…'}
+        </p>
+      </>
     )
   }
 
   if (resetCode) {
     return (
-      <div className="app">
-        <main id="main">
+      <>
+        {band(false)}
+        <main id="main" className="shell">
           <ResetPasswordPage
             code={resetCode}
             onDone={(me) => {
@@ -139,25 +171,29 @@ export default function App() {
           />
         </main>
         {noticeEl}
-      </div>
+      </>
     )
   }
 
   if (status === 'offline') {
     return (
-      <div className="app-message empty" role="alert">
-        <p>Can&apos;t reach the server. It may be waking up, which takes about a minute.</p>
-        <button type="button" className="btn" onClick={checkSavedLogin}>
-          Try again
-        </button>
-      </div>
+      <>
+        {band(false)}
+        <div className="app-message empty" role="alert">
+          <p>Can&apos;t reach the server. It may be waking up, which takes about a minute.</p>
+          <button type="button" className="btn" onClick={checkSavedLogin}>
+            Try again
+          </button>
+        </div>
+      </>
     )
   }
 
   if (!user) {
     return (
-      <div className="app">
-        <main id="main">
+      <>
+        {band(false)}
+        <main id="main" className="shell">
           <AuthPage
             key={authView.n}
             initialMode={authView.mode}
@@ -166,55 +202,34 @@ export default function App() {
           />
         </main>
         {noticeEl}
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="app">
+    <>
       <a className="skip-link" href="#main">
         Skip to content
       </a>
+      {band(true)}
 
-      <div className="account-bar">
+      <div className="shell account-bar">
         <p>
           Signed in as <strong>{user.name || user.email}</strong>
         </p>
-        <button type="button" className="btn btn-small" onClick={handleLogOut}>
+        <button type="button" className="link-button" onClick={handleLogOut}>
           Log out
         </button>
       </div>
 
-      <header className="masthead">
-        <h1 className="wordmark">
-          Second <span>Stitch</span>
-        </h1>
-        <nav aria-label="Sections">
-          <ul className="tabs">
-            {TABS.map((t) => (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  className="tab"
-                  aria-current={tab === t.id ? 'page' : undefined}
-                  onClick={() => setTab(t.id)}
-                >
-                  {t.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
-
       {/* key: switching accounts starts every page fresh */}
-      <main id="main" tabIndex="-1" key={user.id}>
+      <main id="main" className="shell app" tabIndex="-1" key={user.id}>
         {tab === 'closet' && <Closet notify={notify} />}
         {tab === 'mix' && <MixMatch notify={notify} />}
         {tab === 'stats' && <Stats />}
       </main>
 
       {noticeEl}
-    </div>
+    </>
   )
 }

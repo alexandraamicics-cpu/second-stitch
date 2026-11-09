@@ -25,13 +25,11 @@ export default function ResetPasswordPage({ code, onDone, onAskAgain }) {
   return (
     <div className="auth">
       <div className="auth-intro">
-        <h1 className="wordmark">
-          Second <span>Stitch</span>
-        </h1>
+        <h1>Almost back in.</h1>
+        <p className="auth-tagline">Choose a new password and you&apos;ll go straight to your closet.</p>
       </div>
 
       <form className="auth-card" onSubmit={handleSubmit} noValidate aria-labelledby="reset-heading">
-        <span className="tag-hole" aria-hidden="true" />
         <h2 id="reset-heading">Choose a new password</h2>
 
         {linkProblem ? (
