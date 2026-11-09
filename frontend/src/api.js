@@ -2,10 +2,11 @@
 // Components never call fetch() directly, which keeps them easy to test.
 
 export class ApiError extends Error {
-  constructor(message, fields = {}, status = 0) {
+  constructor(message, fields = {}, status = 0, code = null) {
     super(message)
     this.fields = fields
     this.status = status
+    this.code = code // e.g. 'EMAIL_NOT_VERIFIED'
   }
 }
 
@@ -15,47 +16,44 @@ const BASE = import.meta.env.VITE_API_URL ?? ''
 
 export const apiUrl = (path) => (path ? BASE + path : path)
 
-// --- owner password ---
-// Saved in this browser after you unlock editing, and sent with every change.
-// The server checks it; looking around never needs it.
-const PASSWORD_KEY = 'second-stitch-owner-password'
-const OWNER_HEADER = 'X-Owner-Password'
+// --- login token ---
+// After you sign up or log in, the server sends a token. It's kept in this browser
+// and sent with every request as "Authorization: Bearer <token>".
+const TOKEN_KEY = 'second-stitch-token'
 
 function readSaved() {
   try {
-    return localStorage.getItem(PASSWORD_KEY)
+    return localStorage.getItem(TOKEN_KEY)
   } catch {
-    return null // storage can be blocked (private windows); just ask again next time
+    return null // storage can be blocked (private windows); you'll just log in again next time
   }
 }
 
-let ownerPassword = readSaved()
+let token = readSaved()
 
-export const hasOwnerPassword = () => !!ownerPassword
+export const hasToken = () => !!token
 
-export function setOwnerPassword(password) {
-  ownerPassword = password
+function saveToken(value) {
+  token = value
   try {
-    localStorage.setItem(PASSWORD_KEY, password)
+    localStorage.setItem(TOKEN_KEY, value)
   } catch {
-    // remembered for this visit only
+    // kept for this visit only
   }
 }
 
-export function clearOwnerPassword() {
-  ownerPassword = null
+export function logOut() {
+  token = null
   try {
-    localStorage.removeItem(PASSWORD_KEY)
+    localStorage.removeItem(TOKEN_KEY)
   } catch {
     // nothing saved
   }
 }
 
-const isChange = (method = 'GET') => method !== 'GET'
-
 async function request(path, options = {}) {
   const headers = { ...options.headers }
-  if (ownerPassword && isChange(options.method)) headers[OWNER_HEADER] = ownerPassword
+  if (token) headers.Authorization = `Bearer ${token}`
 
   let response
   try {
@@ -72,12 +70,17 @@ async function request(path, options = {}) {
 
   const body = await response.json().catch(() => null)
   if (!response.ok) {
-    // The saved password stopped working (e.g. it was changed on the server): forget it
-    if (response.status === 401 && ownerPassword) {
-      clearOwnerPassword()
-      window.dispatchEvent(new Event('owner-locked'))
+    // The token expired or stopped working: forget it, and tell the app to show the log-in page
+    if (response.status === 401 && token) {
+      logOut()
+      window.dispatchEvent(new Event('session-expired'))
     }
-    throw new ApiError(body?.message ?? `Request failed (${response.status})`, body?.fields ?? {}, response.status)
+    throw new ApiError(
+      body?.message ?? `Request failed (${response.status})`,
+      body?.fields ?? {},
+      response.status,
+      body?.code ?? null,
+    )
   }
   return body
 }
@@ -114,11 +117,37 @@ export const deleteOutfit = (id) => request(`/api/outfits/${id}`, { method: 'DEL
 // --- stats ---
 export const getStats = () => request('/api/stats')
 
-// --- owner password ---
-/** { locked: true } when the server needs a password for changes. */
-export const getAuthStatus = () => request('/api/auth')
+// --- accounts ---
+/** Creates an account and emails a confirmation link. Resolves to { message }. Doesn't log in. */
+export const signUp = ({ email, password, name }) =>
+  request('/api/auth/signup', json('POST', { email, password, name }))
 
-/** Resolves if the password is right, throws an ApiError (401) if not. Doesn't save it. */
-export function checkOwnerPassword(password) {
-  return request('/api/auth/check', { method: 'POST', headers: { [OWNER_HEADER]: password } })
+/** Uses the code from a "Confirm your email" link. Logs in; resolves to the user. */
+export async function verifyEmail(code) {
+  const result = await request('/api/auth/verify', json('POST', { token: code }))
+  saveToken(result.token)
+  return result.user
 }
+
+/** Sends the confirmation link again. Resolves to { message }. */
+export const resendVerification = (email) => request('/api/auth/resend-verification', json('POST', { email }))
+
+/** Logs in. Resolves to the user ({ id, email, name }). */
+export async function logIn({ email, password }) {
+  const result = await request('/api/auth/login', json('POST', { email, password }))
+  saveToken(result.token)
+  return result.user
+}
+
+/** Emails a "Reset your password" link. Resolves to { message }. */
+export const forgotPassword = (email) => request('/api/auth/forgot-password', json('POST', { email }))
+
+/** Uses the code from a reset link to set a new password. Logs in; resolves to the user. */
+export async function resetPassword(code, password) {
+  const result = await request('/api/auth/reset-password', json('POST', { token: code, password }))
+  saveToken(result.token)
+  return result.user
+}
+
+/** Who is logged in (checks the saved token is still good). */
+export const getMe = () => request('/api/auth/me')

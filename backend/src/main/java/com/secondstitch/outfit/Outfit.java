@@ -40,6 +40,10 @@ public class Outfit {
 
     private int wearCount;
 
+    /** The account this belongs to. Empty only for data made before accounts existed. */
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     private Instant createdAt = Instant.now();
 
     /** Wearing an outfit counts as wearing every piece in it. */
@@ -70,6 +74,9 @@ public class Outfit {
 
     public int getWearCount() { return wearCount; }
     public void setWearCount(int wearCount) { this.wearCount = wearCount; }
+
+    public Long getOwnerId() { return ownerId; }
+    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

@@ -59,6 +59,10 @@ public class Item {
     @Column(length = 1000)
     private String notes;
 
+    /** The account this belongs to. Empty only for data made before accounts existed. */
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     private Instant createdAt = Instant.now();
 
     public void recordWear() {
@@ -115,6 +119,9 @@ public class Item {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public Long getOwnerId() { return ownerId; }
+    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

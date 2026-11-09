@@ -1,5 +1,9 @@
 package com.secondstitch.common;
 
+import com.secondstitch.auth.EmailNotVerifiedException;
+import com.secondstitch.auth.InvalidLinkException;
+import com.secondstitch.auth.LoginFailedException;
+import com.secondstitch.auth.TooManyAttemptsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -35,6 +39,34 @@ public class ApiExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> badRequest(IllegalArgumentException ex) {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> conflict(ConflictException ex) {
+        return error(HttpStatus.CONFLICT, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(LoginFailedException.class)
+    public ResponseEntity<Map<String, Object>> loginFailed(LoginFailedException ex) {
+        return error(HttpStatus.UNAUTHORIZED, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<Map<String, Object>> notVerified(EmailNotVerifiedException ex) {
+        ResponseEntity<Map<String, Object>> response = error(HttpStatus.FORBIDDEN, ex.getMessage(), Map.of());
+        // The frontend checks this code to show a "Send the link again" button
+        response.getBody().put("code", "EMAIL_NOT_VERIFIED");
+        return response;
+    }
+
+    @ExceptionHandler(InvalidLinkException.class)
+    public ResponseEntity<Map<String, Object>> invalidLink(InvalidLinkException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(TooManyAttemptsException.class)
+    public ResponseEntity<Map<String, Object>> tooMany(TooManyAttemptsException ex) {
+        return error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), Map.of());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

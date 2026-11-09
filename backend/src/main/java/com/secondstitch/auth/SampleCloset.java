@@ -1,47 +1,34 @@
-package com.secondstitch.config;
+package com.secondstitch.auth;
 
 import com.secondstitch.item.Category;
 import com.secondstitch.item.Item;
 import com.secondstitch.item.ItemRepository;
 import com.secondstitch.outfit.Outfit;
 import com.secondstitch.outfit.OutfitRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Fills an empty closet with sample pieces so the app looks alive the
- * first time you run it. Turn off with app.seed-sample-data=false.
+ * Gives a new account a starter closet, so there's something to try straight away.
+ * Turn off with app.seed-sample-data=false (or SEED_SAMPLE_DATA=false on the live site).
  */
-@Component
-@ConditionalOnProperty(name = "app.seed-sample-data", havingValue = "true")
-public class SampleData implements CommandLineRunner {
-
-    private static final Logger log = LoggerFactory.getLogger(SampleData.class);
+@Service
+public class SampleCloset {
 
     private final ItemRepository items;
     private final OutfitRepository outfits;
 
-    public SampleData(ItemRepository items, OutfitRepository outfits) {
+    public SampleCloset(ItemRepository items, OutfitRepository outfits) {
         this.items = items;
         this.outfits = outfits;
     }
 
-    @Override
-    @Transactional
-    public void run(String... args) {
-        if (items.count() > 0) {
-            return;
-        }
-
+    public void createFor(Long ownerId) {
         Item shirt = item("Oversized linen button-up", Category.TOP, "Uniqlo", "L", "sage", "#9CAF88",
                 "180", "1490", "Ukay-ukay, Cubao", 9, "Breathable, no scratchy tag. Perfect for hot days.");
         Item jeans = item("Straight-leg 501s", Category.BOTTOM, "Levi's", "28", "faded indigo", "#5B7493",
@@ -59,17 +46,16 @@ public class SampleData implements CommandLineRunner {
         Item dress = item("Bias-cut slip dress", Category.DRESS, null, "S", "champagne", "#E6D3B3",
                 "280", "2600", "Online live selling", 0, "Soft seams, sensory-friendly.");
 
-        List<Item> saved = items.saveAll(List.of(shirt, jeans, vest, skirt, jacket, loafers, scarf, dress));
-
-        // Spread the "created" times out so the newest-first order looks natural.
-        for (int i = 0; i < saved.size(); i++) {
-            saved.get(i).setCreatedAt(Instant.now().minusSeconds(3600L * (saved.size() - i)));
+        List<Item> pieces = List.of(shirt, jeans, vest, skirt, jacket, loafers, scarf, dress);
+        for (int i = 0; i < pieces.size(); i++) {
+            pieces.get(i).setOwnerId(ownerId);
+            // Spread the "created" times out so the newest-first order looks natural
+            pieces.get(i).setCreatedAt(Instant.now().minusSeconds(3600L * (pieces.size() - i)));
         }
+        items.saveAll(pieces);
 
-        outfits.save(outfit("Errand day", "comfy", jeans, shirt, loafers));
-        outfits.save(outfit("Gallery hop", "weekend", skirt, vest, loafers, scarf));
-
-        log.info("Added {} sample items and 2 sample outfits", saved.size());
+        outfits.save(outfit(ownerId, "Errand day", "comfy", jeans, shirt, loafers));
+        outfits.save(outfit(ownerId, "Gallery hop", "weekend", skirt, vest, loafers, scarf));
     }
 
     private static Item item(String name, Category category, String brand, String size, String color, String hex,
@@ -90,11 +76,12 @@ public class SampleData implements CommandLineRunner {
         return item;
     }
 
-    private static Outfit outfit(String name, String occasion, Item... pieces) {
+    private static Outfit outfit(Long ownerId, String name, String occasion, Item... pieces) {
         Outfit outfit = new Outfit();
+        outfit.setOwnerId(ownerId);
         outfit.setName(name);
         outfit.setOccasion(occasion);
-        outfit.setItems(new java.util.ArrayList<>(List.of(pieces)));
+        outfit.setItems(new ArrayList<>(List.of(pieces)));
         return outfit;
     }
 }

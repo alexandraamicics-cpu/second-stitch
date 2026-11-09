@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { clearOwnerPassword, getAuthStatus, hasOwnerPassword, setOwnerPassword } from './api.js'
-import OwnerBar from './components/OwnerBar.jsx'
+import { getMe, hasToken, logOut, verifyEmail } from './api.js'
+import AuthPage from './pages/AuthPage.jsx'
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
+import { takeEmailLink } from './utils/emailLink.js'
 import Closet from './pages/Closet.jsx'
 import MixMatch from './pages/MixMatch.jsx'
 import Stats from './pages/Stats.jsx'
@@ -16,47 +18,156 @@ export default function App() {
   const [notice, setNotice] = useState('')
   const timer = useRef(null)
 
-  // Short confirmation messages ("Logged a wear for...") that screen readers also announce.
+  // Did they arrive from an email link (?verify=... or ?reset=...)?
+  const [emailLink] = useState(takeEmailLink)
+  const [resetCode, setResetCode] = useState(emailLink?.kind === 'reset' ? emailLink.code : null)
+  const verifyStarted = useRef(false)
+
+  // Who is logged in. 'checking' while we ask the server about a saved token.
+  const [user, setUser] = useState(null)
+  const [status, setStatus] = useState(() => {
+    if (emailLink?.kind === 'verify') return 'verifying'
+    return hasToken() ? 'checking' : 'ready'
+  })
+
+  // Which log-in screen to show, and any message on it (n makes it start fresh)
+  const [authView, setAuthView] = useState({ mode: 'login', message: '', n: 0 })
+  const showAuth = (mode, message = '') => setAuthView((v) => ({ mode, message, n: v.n + 1 }))
+
+  // Short confirmation messages ("Added a wear to...") that screen readers also announce.
   const notify = useCallback((message) => {
     setNotice(message)
     clearTimeout(timer.current)
     timer.current = setTimeout(() => setNotice(''), 4000)
   }, [])
 
-  // Does the server need the owner password for changes? (null = still checking)
-  const [serverLocked, setServerLocked] = useState(null)
-  const [unlocked, setUnlocked] = useState(hasOwnerPassword)
-  const canEdit = serverLocked === false || unlocked
-
-  useEffect(() => {
-    getAuthStatus()
-      .then((status) => setServerLocked(status.locked))
+  const checkSavedLogin = useCallback(() => {
+    setStatus('checking')
+    getMe()
+      .then((me) => {
+        setUser(me)
+        setStatus('ready')
+      })
       .catch((err) => {
-        // An older backend without /api/auth has no password at all
-        if (err.status === 404) setServerLocked(false)
+        if (err.status) {
+          logOut() // the server answered: the token is no good
+          setStatus('ready')
+        } else {
+          setStatus('offline') // the server didn't answer (e.g. waking up): keep the token and retry
+        }
       })
   }, [])
 
-  // api.js fires this if the saved password stops working
   useEffect(() => {
-    const onLocked = () => {
-      setUnlocked(false)
-      notify('Your saved password no longer works. Unlock editing again.')
+    if (emailLink?.kind === 'verify') {
+      if (verifyStarted.current) return // the link only works once, so never send it twice
+      verifyStarted.current = true
+      verifyEmail(emailLink.code)
+        .then((me) => {
+          setUser(me)
+          setStatus('ready')
+          notify('Email confirmed. Welcome to your closet!')
+        })
+        .catch((err) => {
+          if (hasToken()) {
+            // Already logged in (e.g. clicked an old link again): stay logged in, just mention it
+            notify("That link was already used, but you're still logged in.")
+            checkSavedLogin()
+          } else {
+            showAuth('login', err.message)
+            setStatus('ready')
+          }
+        })
+      return
     }
-    window.addEventListener('owner-locked', onLocked)
-    return () => window.removeEventListener('owner-locked', onLocked)
+    if (hasToken()) checkSavedLogin()
+  }, [emailLink, checkSavedLogin, notify])
+
+  // api.js fires this when a request comes back "log in to continue"
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null)
+      notify('You were logged out. Log in again to continue.')
+    }
+    window.addEventListener('session-expired', onExpired)
+    return () => window.removeEventListener('session-expired', onExpired)
   }, [notify])
 
-  function handleUnlock(password) {
-    setOwnerPassword(password)
-    setUnlocked(true)
-    notify('Editing unlocked on this device')
+  function handleAuthed(me) {
+    setUser(me)
+    setTab('closet')
+    notify(`Welcome back${me.name ? `, ${me.name}` : ''}`)
   }
 
-  function handleLock() {
-    clearOwnerPassword()
-    setUnlocked(false)
-    notify('Editing locked')
+  function handleLogOut() {
+    logOut()
+    setUser(null)
+    showAuth('login')
+    notify('Logged out')
+  }
+
+  const noticeEl = (
+    <p className={`notice ${notice ? 'is-visible' : ''}`} role="status" aria-live="polite">
+      {notice}
+    </p>
+  )
+
+  if (status === 'checking' || status === 'verifying') {
+    return (
+      <p className="quiet app-message">
+        {status === 'verifying' ? 'Confirming your email…' : 'Opening your closet…'}
+      </p>
+    )
+  }
+
+  if (resetCode) {
+    return (
+      <div className="app">
+        <main id="main">
+          <ResetPasswordPage
+            code={resetCode}
+            onDone={(me) => {
+              setResetCode(null)
+              setUser(me)
+              setTab('closet')
+              notify("Password changed. You're logged in.")
+            }}
+            onAskAgain={() => {
+              setResetCode(null)
+              showAuth('forgot')
+            }}
+          />
+        </main>
+        {noticeEl}
+      </div>
+    )
+  }
+
+  if (status === 'offline') {
+    return (
+      <div className="app-message empty" role="alert">
+        <p>Can&apos;t reach the server. It may be waking up, which takes about a minute.</p>
+        <button type="button" className="btn" onClick={checkSavedLogin}>
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="app">
+        <main id="main">
+          <AuthPage
+            key={authView.n}
+            initialMode={authView.mode}
+            initialMessage={authView.message}
+            onAuthed={handleAuthed}
+          />
+        </main>
+        {noticeEl}
+      </div>
+    )
   }
 
   return (
@@ -64,7 +175,15 @@ export default function App() {
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      {serverLocked && <OwnerBar unlocked={unlocked} onUnlock={handleUnlock} onLock={handleLock} />}
+
+      <div className="account-bar">
+        <p>
+          Signed in as <strong>{user.name || user.email}</strong>
+        </p>
+        <button type="button" className="btn btn-small" onClick={handleLogOut}>
+          Log out
+        </button>
+      </div>
 
       <header className="masthead">
         <h1 className="wordmark">
@@ -88,15 +207,14 @@ export default function App() {
         </nav>
       </header>
 
-      <main id="main" tabIndex="-1">
-        {tab === 'closet' && <Closet notify={notify} canEdit={canEdit} />}
-        {tab === 'mix' && <MixMatch notify={notify} canEdit={canEdit} />}
+      {/* key: switching accounts starts every page fresh */}
+      <main id="main" tabIndex="-1" key={user.id}>
+        {tab === 'closet' && <Closet notify={notify} />}
+        {tab === 'mix' && <MixMatch notify={notify} />}
         {tab === 'stats' && <Stats />}
       </main>
 
-      <p className={`notice ${notice ? 'is-visible' : ''}`} role="status" aria-live="polite">
-        {notice}
-      </p>
+      {noticeEl}
     </div>
   )
 }

@@ -5,16 +5,21 @@ import com.secondstitch.outfit.OutfitRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -27,12 +32,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Integration tests: start the real app (with an in-memory database)
  * and call the API the same way the React frontend does.
+ * Every request is made as logged-in user 1, unless a test says otherwise.
  */
 @SpringBootTest
-@AutoConfigureMockMvc
 class ItemApiTest {
 
+    static final long ME = 1L;
+    static final long SOMEONE_ELSE = 2L;
+
+    /** Pretends the request comes with a valid login token for this user. */
+    static RequestPostProcessor asUser(long userId) {
+        return jwt().jwt(token -> token.subject(Long.toString(userId)));
+    }
+
     @Autowired
+    WebApplicationContext context;
+
     MockMvc mvc;
 
     @Autowired
@@ -49,6 +64,17 @@ class ItemApiTest {
         outfits.deleteAll();
         photos.deleteAll();
         items.deleteAll();
+        mvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(springSecurity())
+                .defaultRequest(get("/").with(asUser(ME)))
+                .build();
+    }
+
+    private String photoUrlAfterUploading(long id, MockMultipartFile file) throws Exception {
+        String json = mvc.perform(multipart("/api/items/{id}/photo", id).file(file))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(json, "$.photoUrl");
     }
 
     private static final String JEANS = """
@@ -169,6 +195,32 @@ class ItemApiTest {
     }
 
     @Test
+    void newPiecesBelongToTheLoggedInUser() throws Exception {
+        long id = createJeans();
+        org.assertj.core.api.Assertions.assertThat(items.findById(id).orElseThrow().getOwnerId()).isEqualTo(ME);
+    }
+
+    @Test
+    void someoneElseCannotSeeOrChangeMyPieces() throws Exception {
+        long id = createJeans();
+
+        mvc.perform(get("/api/items").with(asUser(SOMEONE_ELSE))).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/items/{id}", id).with(asUser(SOMEONE_ELSE))).andExpect(status().isNotFound());
+        mvc.perform(post("/api/items/{id}/wear", id).with(asUser(SOMEONE_ELSE))).andExpect(status().isNotFound());
+        mvc.perform(delete("/api/items/{id}", id).with(asUser(SOMEONE_ELSE))).andExpect(status().isNotFound());
+
+        // Still mine, untouched
+        mvc.perform(get("/api/items/{id}", id)).andExpect(jsonPath("$.wearCount").value(0));
+    }
+
+    @Test
+    void notLoggedInGets401() throws Exception {
+        mvc.perform(get("/api/items").with(anonymous()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Log in to continue"));
+    }
+
+    @Test
     void unknownItemIs404WithAMessage() throws Exception {
         mvc.perform(get("/api/items/9999"))
                 .andExpect(status().isNotFound())
@@ -181,11 +233,10 @@ class ItemApiTest {
         byte[] fakePng = {(byte) 0x89, 'P', 'N', 'G'};
         MockMultipartFile file = new MockMultipartFile("file", "jeans.png", "image/png", fakePng);
 
-        mvc.perform(multipart("/api/items/{id}/photo", id).file(file))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.photoUrl", startsWith("/api/items/" + id + "/photo")));
+        String photoUrl = photoUrlAfterUploading(id, file);
+        org.assertj.core.api.Assertions.assertThat(photoUrl).startsWith("/api/items/" + id + "/photo?v=");
 
-        mvc.perform(get("/api/items/{id}/photo", id))
+        mvc.perform(get(photoUrl))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("image/png"))
                 .andExpect(content().bytes(fakePng));
@@ -217,7 +268,27 @@ class ItemApiTest {
                 .andReturn().getResponse().getContentAsString(), "$.photoUrl");
 
         org.assertj.core.api.Assertions.assertThat(secondUrl).isNotEqualTo(firstUrl);
-        mvc.perform(get("/api/items/{id}/photo", id)).andExpect(content().bytes(new byte[]{2}));
+        mvc.perform(get(secondUrl)).andExpect(content().bytes(new byte[]{2}));
+        mvc.perform(get(firstUrl)).andExpect(status().isNotFound()); // the old link stops working
+    }
+
+    @Test
+    void photoLinkWorksWithoutLoggingIn() throws Exception {
+        // <img> tags can't send a login token, so the link itself is the key
+        long id = createJeans();
+        String photoUrl = photoUrlAfterUploading(id, new MockMultipartFile("file", "a.png", "image/png", new byte[]{7}));
+        mvc.perform(get(photoUrl).with(anonymous()))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(new byte[]{7}));
+    }
+
+    @Test
+    void photoNeedsTheRightCode() throws Exception {
+        long id = createJeans();
+        photoUrlAfterUploading(id, new MockMultipartFile("file", "a.png", "image/png", new byte[]{7}));
+        mvc.perform(get("/api/items/{id}/photo", id).with(anonymous())).andExpect(status().isNotFound());
+        mvc.perform(get("/api/items/{id}/photo", id).param("v", "guess").with(anonymous()))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -234,7 +305,7 @@ class ItemApiTest {
     void itemWithoutAPhotoHasNoPhotoUrlAnd404() throws Exception {
         long id = createJeans();
         mvc.perform(get("/api/items/{id}", id)).andExpect(jsonPath("$.photoUrl").doesNotExist());
-        mvc.perform(get("/api/items/{id}/photo", id)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/items/{id}/photo", id).param("v", "anything")).andExpect(status().isNotFound());
     }
 
     @Test

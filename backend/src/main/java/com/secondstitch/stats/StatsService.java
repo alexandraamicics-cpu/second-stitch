@@ -31,8 +31,8 @@ public class StatsService {
     }
 
     @Transactional(readOnly = true)
-    public StatsResponse summary() {
-        List<Item> all = items.findAll();
+    public StatsResponse summary(Long userId) {
+        List<Item> all = items.findByOwnerId(userId);
 
         BigDecimal totalPaid = sum(all.stream().map(Item::getPricePaid).toList());
         BigDecimal totalRetail = sum(all.stream().map(Item::getEstimatedRetail).filter(Objects::nonNull).toList());

@@ -109,31 +109,137 @@ main:focus {
   outline: none;
 }
 
-/* ---------- owner bar (live site only) ---------- */
+/* ---------- account bar ---------- */
 
-.owner-bar {
+.account-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem 1rem;
-  margin: 1rem 0 0;
-  padding: 0.55rem 0.6rem 0.55rem 1rem;
-  border-radius: 999px;
-  background: var(--panel);
-  border: 1.5px dashed var(--line);
+  padding-top: 1rem;
   font-size: var(--step--1);
 }
-.owner-bar p {
+.account-bar p {
   margin: 0;
   color: var(--ink-soft);
 }
-.owner-bar.is-unlocked {
-  border-style: solid;
-  border-color: var(--plum);
-}
-.owner-bar.is-unlocked p {
+.account-bar strong {
   color: var(--ink);
+}
+
+.app-message {
+  max-width: 520px;
+  margin: 20vh auto 0;
+  padding: 0 16px;
+  text-align: center;
+}
+
+/* ---------- log in / sign up ---------- */
+
+.auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.1fr minmax(300px, 420px);
+  gap: 3rem;
+  align-items: center;
+  padding: 3rem 0;
+}
+.auth .wordmark {
+  font-size: clamp(3rem, 8vw, 5.5rem);
+}
+.auth-tagline {
+  font-size: var(--step-1);
+  color: var(--ink-soft);
+  max-width: 30ch;
+  margin: 1.25rem 0 0;
+  line-height: 1.4;
+}
+
+/* The form is a big kraft price tag, like the ones on the closet rack */
+.auth-card {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  background: var(--kraft);
+  color: var(--kraft-ink);
+  padding: 2.5rem 1.75rem 1.75rem;
+  clip-path: polygon(22px 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%, 0 22px);
+  transform: rotate(-1deg);
+}
+.auth-card .tag-hole {
+  top: 0.9rem;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+}
+.auth-card h2 {
+  font-size: var(--step-2);
+  font-weight: 800;
+}
+.auth-card .field label {
+  color: var(--kraft-ink);
+}
+.auth-card .field input {
+  background: #fbf7ef;
+  color: #2b2116;
+  border-color: rgb(0 0 0 / 0.2);
+}
+.auth-card .field-hint {
+  color: var(--kraft-ink);
+  opacity: 0.8;
+}
+.auth-card .field-error,
+.auth-card .form-message {
+  color: #8c1d18;
+  font-weight: 600;
+}
+.auth-card .btn-primary {
+  background: var(--kraft-ink);
+  border-color: var(--kraft-ink);
+  color: var(--kraft);
+  justify-self: start;
+  padding-inline: 1.5rem;
+}
+.auth-card .btn-primary:hover {
+  background: var(--kraft-ink);
+}
+.auth-card .btn-quiet {
+  color: var(--kraft-ink);
+}
+.auth-info {
+  margin: 0;
+  line-height: 1.5;
+}
+.forgot-link {
+  justify-self: start;
+  font-size: var(--step--1);
+  margin-top: 0.15rem;
+}
+.auth-card .resend {
+  justify-self: start;
+  border-color: var(--kraft-ink);
+  color: var(--kraft-ink);
+}
+.password-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.auth-switch {
+  margin: 0;
+  font-size: var(--step--1);
+}
+.link-button {
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
 /* ---------- masthead ---------- */
@@ -1047,9 +1153,14 @@ main:focus {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 0.6rem;
   }
-  .owner-bar {
-    border-radius: 14px;
-    padding: 0.7rem 0.9rem;
+  .auth {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    min-height: 0;
+    padding-top: 2rem;
+  }
+  .account-bar {
+    justify-content: space-between;
   }
   .look-bar {
     display: flex;

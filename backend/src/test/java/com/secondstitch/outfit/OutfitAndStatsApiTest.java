@@ -5,23 +5,33 @@ import com.secondstitch.item.ItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/** Every request is made as logged-in user 1, unless a test says otherwise. */
 @SpringBootTest
-@AutoConfigureMockMvc
 class OutfitAndStatsApiTest {
 
+    static RequestPostProcessor asUser(long userId) {
+        return jwt().jwt(token -> token.subject(Long.toString(userId)));
+    }
+
     @Autowired
+    WebApplicationContext context;
+
     MockMvc mvc;
 
     @Autowired
@@ -34,6 +44,10 @@ class OutfitAndStatsApiTest {
     void emptyCloset() {
         outfits.deleteAll();
         items.deleteAll();
+        mvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(springSecurity())
+                .defaultRequest(get("/").with(asUser(1)))
+                .build();
     }
 
     private long createItem(String name, String category, int paid, Integer retail, String store) throws Exception {
@@ -82,6 +96,25 @@ class OutfitAndStatsApiTest {
                 .andExpect(jsonPath("$.totalPaid").value(590.0))
                 .andExpect(jsonPath("$.totalRetail").value(5780.0))
                 .andExpect(jsonPath("$.totalSaved").value(5250.0));
+    }
+
+    @Test
+    void cannotPutSomeoneElsesPieceInMyOutfit() throws Exception {
+        long theirs = createItem("Their shirt", "TOP", 100, null, "Cubao"); // made by user 1
+        mvc.perform(post("/api/outfits").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\": \"Sneaky\", \"itemIds\": [" + theirs + "]}")
+                        .with(asUser(2)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void eachUserOnlySeesTheirOwnOutfitsAndStats() throws Exception {
+        long top = createItem("Linen shirt", "TOP", 180, 1490, "Cubao");
+        createOutfit("Errand day", top);
+
+        mvc.perform(get("/api/outfits").with(asUser(2))).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/stats").with(asUser(2))).andExpect(jsonPath("$.totalItems").value(0));
+        mvc.perform(get("/api/outfits")).andExpect(jsonPath("$", hasSize(1)));
     }
 
     @Test
