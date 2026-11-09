@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { apiUrl } from '../api.js'
 
 // Shows the item's photo, or a simple garment outline on its colour swatch
-// when there is no photo yet.
+// when there is no photo yet (or the photo can't be loaded).
 
 const SHAPES = {
   TOP: 'M30 22 L44 13 Q50 20 56 13 L70 22 L82 38 L71 44 L68 37 L68 86 L32 86 L32 37 L29 44 L18 38 Z',
@@ -24,10 +25,19 @@ export function Silhouette({ category }) {
 
 export default function ItemPhoto({ item, className = '' }) {
   const swatch = item.colorHex || '#C9CBC0'
+  // If a photo fails to load, remember which one, and show the outline instead of a broken image
+  const [failedUrl, setFailedUrl] = useState(null)
+  const showPhoto = item.photoUrl && failedUrl !== item.photoUrl
+
   return (
     <div className={`item-photo ${className}`} style={{ '--swatch': swatch }}>
-      {item.photoUrl ? (
-        <img src={apiUrl(item.photoUrl)} alt={item.name} loading="lazy" />
+      {showPhoto ? (
+        <img
+          src={apiUrl(item.photoUrl)}
+          alt={item.name}
+          loading="lazy"
+          onError={() => setFailedUrl(item.photoUrl)}
+        />
       ) : (
         <Silhouette category={item.category} />
       )}

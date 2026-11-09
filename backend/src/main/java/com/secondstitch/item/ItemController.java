@@ -1,8 +1,7 @@
 package com.secondstitch.item;
 
-import com.secondstitch.common.NotFoundException;
 import jakarta.validation.Valid;
-import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -38,11 +38,9 @@ import java.util.List;
 public class ItemController {
 
     private final ItemService service;
-    private final PhotoStorage photos;
 
-    public ItemController(ItemService service, PhotoStorage photos) {
+    public ItemController(ItemService service) {
         this.service = service;
-        this.photos = photos;
     }
 
     @GetMapping
@@ -88,14 +86,12 @@ public class ItemController {
     }
 
     @GetMapping("/{id}/photo")
-    public ResponseEntity<Resource> photo(@PathVariable Long id) {
-        String filename = service.photoFilename(id);
-        Resource resource = photos.load(filename);
-        if (resource == null) {
-            throw new NotFoundException("Photo for item", id);
-        }
+    public ResponseEntity<byte[]> photo(@PathVariable Long id) {
+        ItemPhoto photo = service.photo(id);
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(photos.contentType(filename)))
-                .body(resource);
+                .contentType(MediaType.parseMediaType(photo.getContentType()))
+                // The URL changes (?v=...) whenever the photo changes, so browsers can keep it for a long time
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic())
+                .body(photo.getData());
     }
 }

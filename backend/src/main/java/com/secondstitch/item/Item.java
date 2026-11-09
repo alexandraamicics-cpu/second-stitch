@@ -49,8 +49,12 @@ public class Item {
 
     private int wearCount;
 
-    /** Name of the uploaded photo file on disk, or null if there's no photo. */
-    private String photoFilename;
+    /**
+     * Changes every time a new photo is uploaded (null = no photo).
+     * It goes in the photo's URL, so browsers fetch the new photo instead of a cached old one.
+     * The photo itself is in the item_photo table (see ItemPhoto).
+     */
+    private String photoVersion;
 
     @Column(length = 1000)
     private String notes;
@@ -106,8 +110,8 @@ public class Item {
     public int getWearCount() { return wearCount; }
     public void setWearCount(int wearCount) { this.wearCount = wearCount; }
 
-    public String getPhotoFilename() { return photoFilename; }
-    public void setPhotoFilename(String photoFilename) { this.photoFilename = photoFilename; }
+    public String getPhotoVersion() { return photoVersion; }
+    public void setPhotoVersion(String photoVersion) { this.photoVersion = photoVersion; }
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }

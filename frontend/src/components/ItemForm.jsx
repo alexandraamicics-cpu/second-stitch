@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createItem, updateItem, uploadPhoto } from '../api.js'
 import { CATEGORIES, categorySingular } from '../utils/format.js'
+import { shrinkImage } from '../utils/image.js'
 
 const EMPTY = {
   name: '',
@@ -68,7 +69,8 @@ export default function ItemForm({ item, onSaved, onCancel }) {
     setMessage('')
     try {
       let saved = item ? await updateItem(item.id, toRequest(form)) : await createItem(toRequest(form))
-      if (photo) saved = await uploadPhoto(saved.id, photo)
+      // Shrink big phone photos before uploading (see utils/image.js)
+      if (photo) saved = await uploadPhoto(saved.id, await shrinkImage(photo))
       onSaved(saved, item ? 'Saved changes' : 'Added')
     } catch (err) {
       setErrors(err.fields ?? {})
@@ -205,7 +207,7 @@ export default function ItemForm({ item, onSaved, onCancel }) {
             onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
           />
         </div>
-        <p className="field-hint">Square, flat-lay photos on a plain background look best. Up to 5 MB.</p>
+        <p className="field-hint">Square, flat-lay photos on a plain background look best. Big photos are shrunk automatically.</p>
       </div>
 
       {message && (

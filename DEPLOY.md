@@ -56,6 +56,7 @@ Keep these somewhere private, like a notes app. **Never commit them to GitHub.**
    | `DATABASE_USERNAME` | from step 1 |
    | `DATABASE_PASSWORD` | from step 1 |
    | `SEED_SAMPLE_DATA` | `true` (so visitors see sample pieces) |
+   | `ADMIN_PASSWORD` | a long password only you know (needed to add, edit or delete on the live site) |
    | `CORS_ORIGINS` | leave this for now; you'll add it in step 4 |
 
 5. Click **Create Web Service**. The first build takes several minutes because it downloads Maven and all the dependencies.
@@ -105,8 +106,8 @@ Browsers block a website from calling an API on a different address unless the A
 ## Things to know about free plans
 
 - **The first visit can be slow.** Render's free plan puts the backend to sleep after 15 minutes without visitors, and waking it takes about a minute. Neon's free database also pauses when idle. If a recruiter will look at it, open the site yourself a minute beforehand to wake it up.
-- **Uploaded photos don't last.** Render's free plan doesn't keep files between restarts, so photos uploaded on the live site will disappear. Pieces and outfits are safe because they're stored in Neon. Fixing this with cloud storage (Cloudinary, Azure Blob Storage or S3) is a great next challenge.
-- **Anyone with the link can edit.** There's no login yet, so treat the live site as a demo. Adding sign-in is another good challenge.
+- **Photos are stored in Neon, not on Render.** Render's free plan wipes its disk whenever it sleeps or restarts, so the app saves photos in the database instead. The browser shrinks each photo to about 200 KB first, so Neon's free storage holds thousands.
+- **Set an owner password.** In Render's **Environment**, add `ADMIN_PASSWORD` with a long password only you know. Visitors can then look around but not change anything; you click **Unlock editing** on the site and enter it. Without it, anyone with the link can edit. Adding sign-in is another good challenge.
 - **`VITE_` variables are baked in when Vercel builds.** If you change `VITE_API_URL`, go to **Deployments** in Vercel and click **Redeploy**.
 
 ---

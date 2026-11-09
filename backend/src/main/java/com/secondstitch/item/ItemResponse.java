@@ -29,10 +29,10 @@ public record ItemResponse(
 ) {
 
     public static ItemResponse from(Item item) {
-        String photoUrl = item.getPhotoFilename() == null
+        String photoUrl = item.getPhotoVersion() == null
                 ? null
                 // the ?v= part makes the browser fetch a new photo after you replace it
-                : "/api/items/" + item.getId() + "/photo?v=" + item.getPhotoFilename().hashCode();
+                : "/api/items/" + item.getId() + "/photo?v=" + item.getPhotoVersion();
         return new ItemResponse(
                 item.getId(),
                 item.getName(),

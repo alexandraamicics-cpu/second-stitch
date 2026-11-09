@@ -15,18 +15,68 @@ const BASE = import.meta.env.VITE_API_URL ?? ''
 
 export const apiUrl = (path) => (path ? BASE + path : path)
 
+// --- owner password ---
+// Saved in this browser after you unlock editing, and sent with every change.
+// The server checks it; looking around never needs it.
+const PASSWORD_KEY = 'second-stitch-owner-password'
+const OWNER_HEADER = 'X-Owner-Password'
+
+function readSaved() {
+  try {
+    return localStorage.getItem(PASSWORD_KEY)
+  } catch {
+    return null // storage can be blocked (private windows); just ask again next time
+  }
+}
+
+let ownerPassword = readSaved()
+
+export const hasOwnerPassword = () => !!ownerPassword
+
+export function setOwnerPassword(password) {
+  ownerPassword = password
+  try {
+    localStorage.setItem(PASSWORD_KEY, password)
+  } catch {
+    // remembered for this visit only
+  }
+}
+
+export function clearOwnerPassword() {
+  ownerPassword = null
+  try {
+    localStorage.removeItem(PASSWORD_KEY)
+  } catch {
+    // nothing saved
+  }
+}
+
+const isChange = (method = 'GET') => method !== 'GET'
+
 async function request(path, options = {}) {
+  const headers = { ...options.headers }
+  if (ownerPassword && isChange(options.method)) headers[OWNER_HEADER] = ownerPassword
+
   let response
   try {
-    response = await fetch(BASE + path, options)
+    response = await fetch(BASE + path, { ...options, headers })
   } catch {
-    throw new ApiError("Can't reach the server. Is the backend running on port 8080?")
+    throw new ApiError(
+      BASE
+        ? "Can't reach the server. It may be waking up, which takes about a minute. Try again shortly."
+        : "Can't reach the server. Is the backend running on port 8080?",
+    )
   }
 
   if (response.status === 204) return null
 
   const body = await response.json().catch(() => null)
   if (!response.ok) {
+    // The saved password stopped working (e.g. it was changed on the server): forget it
+    if (response.status === 401 && ownerPassword) {
+      clearOwnerPassword()
+      window.dispatchEvent(new Event('owner-locked'))
+    }
     throw new ApiError(body?.message ?? `Request failed (${response.status})`, body?.fields ?? {}, response.status)
   }
   return body
@@ -63,3 +113,12 @@ export const deleteOutfit = (id) => request(`/api/outfits/${id}`, { method: 'DEL
 
 // --- stats ---
 export const getStats = () => request('/api/stats')
+
+// --- owner password ---
+/** { locked: true } when the server needs a password for changes. */
+export const getAuthStatus = () => request('/api/auth')
+
+/** Resolves if the password is right, throws an ApiError (401) if not. Doesn't save it. */
+export function checkOwnerPassword(password) {
+  return request('/api/auth/check', { method: 'POST', headers: { [OWNER_HEADER]: password } })
+}

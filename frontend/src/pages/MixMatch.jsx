@@ -16,7 +16,7 @@ import {
 
 const pieces = (n) => `${n} ${n === 1 ? 'piece' : 'pieces'}`
 
-export default function MixMatch({ notify }) {
+export default function MixMatch({ notify, canEdit = true }) {
   const [items, setItems] = useState(null)
   const [outfits, setOutfits] = useState([])
   const [look, setLook] = useState([])
@@ -248,36 +248,42 @@ export default function MixMatch({ notify }) {
             </div>
           </dl>
 
-          {errors.itemIds && <p className="field-error">{errors.itemIds}</p>}
+          {canEdit ? (
+            <>
+              {errors.itemIds && <p className="field-error">{errors.itemIds}</p>}
 
-          <div className="field">
-            <label htmlFor="o-name">Outfit name</label>
-            <input
-              id="o-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Rainy commute"
-              aria-invalid={!!errors.name}
-            />
-            {errors.name && <p className="field-error">{errors.name}</p>}
-          </div>
-          <div className="field">
-            <label htmlFor="o-occasion">Occasion (optional)</label>
-            <input
-              id="o-occasion"
-              value={occasion}
-              onChange={(e) => setOccasion(e.target.value)}
-              placeholder="soft fabrics day"
-            />
-          </div>
-          {errors.form && !errors.name && !errors.itemIds && (
-            <p className="form-message" role="alert">
-              {errors.form}
-            </p>
+              <div className="field">
+                <label htmlFor="o-name">Outfit name</label>
+                <input
+                  id="o-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Rainy commute"
+                  aria-invalid={!!errors.name}
+                />
+                {errors.name && <p className="field-error">{errors.name}</p>}
+              </div>
+              <div className="field">
+                <label htmlFor="o-occasion">Occasion (optional)</label>
+                <input
+                  id="o-occasion"
+                  value={occasion}
+                  onChange={(e) => setOccasion(e.target.value)}
+                  placeholder="soft fabrics day"
+                />
+              </div>
+              {errors.form && !errors.name && !errors.itemIds && (
+                <p className="form-message" role="alert">
+                  {errors.form}
+                </p>
+              )}
+              <button type="submit" className="btn btn-primary">
+                Save outfit
+              </button>
+            </>
+          ) : (
+            <p className="quiet look-empty">Unlock editing to save this look as an outfit.</p>
           )}
-          <button type="submit" className="btn btn-primary">
-            Save outfit
-          </button>
         </form>
       </div>
 
@@ -315,19 +321,22 @@ export default function MixMatch({ notify }) {
                 name={outfit.name}
                 onAdd={() => changeWear(outfit, 1)}
                 onRemove={() => changeWear(outfit, -1)}
+                readOnly={!canEdit}
               />
               <div className="tag-actions">
                 <button type="button" className="btn btn-small" onClick={() => mixAgain(outfit)}>
                   Mix again
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-small btn-quiet"
-                  onClick={() => handleDelete(outfit)}
-                  aria-label={`Delete outfit ${outfit.name}`}
-                >
-                  Delete
-                </button>
+                {canEdit && (
+                  <button
+                    type="button"
+                    className="btn btn-small btn-quiet"
+                    onClick={() => handleDelete(outfit)}
+                    aria-label={`Delete outfit ${outfit.name}`}
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           </article>

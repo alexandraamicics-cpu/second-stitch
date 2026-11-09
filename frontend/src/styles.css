@@ -109,6 +109,33 @@ main:focus {
   outline: none;
 }
 
+/* ---------- owner bar (live site only) ---------- */
+
+.owner-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 1rem 0 0;
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1.5px dashed var(--line);
+  font-size: var(--step--1);
+}
+.owner-bar p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+.owner-bar.is-unlocked {
+  border-style: solid;
+  border-color: var(--plum);
+}
+.owner-bar.is-unlocked p {
+  color: var(--ink);
+}
+
 /* ---------- masthead ---------- */
 
 .masthead {
@@ -1019,6 +1046,10 @@ main:focus {
   .pick-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 0.6rem;
+  }
+  .owner-bar {
+    border-radius: 14px;
+    padding: 0.7rem 0.9rem;
   }
   .look-bar {
     display: flex;

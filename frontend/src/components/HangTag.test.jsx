@@ -60,6 +60,12 @@ describe('HangTag', () => {
     expect(screen.getByRole('button', { name: 'Remove a wear from Straight-leg 501s' })).toBeDisabled()
   })
 
+  it('shows the wear count but no buttons when editing is locked', () => {
+    render(<HangTag item={jeans} onWear={vi.fn()} onUnwear={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} canEdit={false} />)
+    expect(screen.getByText('14')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
   it('gives the delete button a clear accessible name', () => {
     renderTag()
     expect(screen.getByRole('button', { name: 'Delete Straight-leg 501s' })).toBeInTheDocument()

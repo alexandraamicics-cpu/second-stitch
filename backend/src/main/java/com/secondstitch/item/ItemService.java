@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 /** The business logic for items. Controllers stay thin and call into here. */
 @Service
@@ -72,26 +73,22 @@ public class ItemService {
         for (Outfit outfit : outfits.findByItemsContaining(item)) {
             outfit.getItems().remove(item);
         }
-        photos.delete(item.getPhotoFilename());
+        photos.delete(id);
         items.delete(item);
     }
 
     @Transactional
     public ItemResponse savePhoto(Long id, MultipartFile file) {
         Item item = find(id);
-        String newName = photos.save(id, file);
-        photos.delete(item.getPhotoFilename());
-        item.setPhotoFilename(newName);
+        photos.save(id, file);
+        item.setPhotoVersion(UUID.randomUUID().toString().substring(0, 8));
         return ItemResponse.from(item);
     }
 
     @Transactional(readOnly = true)
-    public String photoFilename(Long id) {
-        String name = find(id).getPhotoFilename();
-        if (name == null) {
-            throw new NotFoundException("Photo for item", id);
-        }
-        return name;
+    public ItemPhoto photo(Long id) {
+        find(id); // 404 if the item doesn't exist
+        return photos.load(id).orElseThrow(() -> new NotFoundException("Photo for item", id));
     }
 
     private Item find(Long id) {

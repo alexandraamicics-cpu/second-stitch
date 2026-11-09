@@ -41,9 +41,13 @@ class ItemApiTest {
     @Autowired
     OutfitRepository outfits;
 
+    @Autowired
+    ItemPhotoRepository photos;
+
     @BeforeEach
     void emptyCloset() {
         outfits.deleteAll();
+        photos.deleteAll();
         items.deleteAll();
     }
 
@@ -124,6 +128,23 @@ class ItemApiTest {
     }
 
     @Test
+    void frontendOnAnyLocalPortCanChangeData() throws Exception {
+        long id = createJeans();
+        // Vite moves to port 5174 if 5173 is busy; that must not cause a 403
+        mvc.perform(post("/api/items/{id}/wear", id).header("Origin", "http://localhost:5174"))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/items/{id}/wear", id).header("Origin", "http://localhost:5174"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void otherWebsitesCannotChangeData() throws Exception {
+        long id = createJeans();
+        mvc.perform(post("/api/items/{id}/wear", id).header("Origin", "https://some-other-site.example"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void wearCountNeverGoesBelowZero() throws Exception {
         long id = createJeans();
         mvc.perform(delete("/api/items/{id}/wear", id))
@@ -168,6 +189,52 @@ class ItemApiTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("image/png"))
                 .andExpect(content().bytes(fakePng));
+    }
+
+    @Test
+    void photoIsStoredInTheDatabase() throws Exception {
+        long id = createJeans();
+        byte[] fakeJpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1, 2, 3};
+        mvc.perform(multipart("/api/items/{id}/photo", id)
+                        .file(new MockMultipartFile("file", "jeans.jpg", "image/jpeg", fakeJpeg)))
+                .andExpect(status().isOk());
+
+        // Saved as a row in item_photo, not as a file on disk, so it survives restarts
+        ItemPhoto saved = photos.findById(id).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(saved.getData()).isEqualTo(fakeJpeg);
+        org.assertj.core.api.Assertions.assertThat(saved.getContentType()).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void replacingAPhotoChangesItsUrl() throws Exception {
+        long id = createJeans();
+        MockMultipartFile first = new MockMultipartFile("file", "a.png", "image/png", new byte[]{1});
+        MockMultipartFile second = new MockMultipartFile("file", "b.png", "image/png", new byte[]{2});
+
+        String firstUrl = JsonPath.read(mvc.perform(multipart("/api/items/{id}/photo", id).file(first))
+                .andReturn().getResponse().getContentAsString(), "$.photoUrl");
+        String secondUrl = JsonPath.read(mvc.perform(multipart("/api/items/{id}/photo", id).file(second))
+                .andReturn().getResponse().getContentAsString(), "$.photoUrl");
+
+        org.assertj.core.api.Assertions.assertThat(secondUrl).isNotEqualTo(firstUrl);
+        mvc.perform(get("/api/items/{id}/photo", id)).andExpect(content().bytes(new byte[]{2}));
+    }
+
+    @Test
+    void deletingAnItemDeletesItsPhoto() throws Exception {
+        long id = createJeans();
+        mvc.perform(multipart("/api/items/{id}/photo", id)
+                .file(new MockMultipartFile("file", "a.png", "image/png", new byte[]{1})));
+
+        mvc.perform(delete("/api/items/{id}", id)).andExpect(status().isNoContent());
+        org.assertj.core.api.Assertions.assertThat(photos.findById(id)).isEmpty();
+    }
+
+    @Test
+    void itemWithoutAPhotoHasNoPhotoUrlAnd404() throws Exception {
+        long id = createJeans();
+        mvc.perform(get("/api/items/{id}", id)).andExpect(jsonPath("$.photoUrl").doesNotExist());
+        mvc.perform(get("/api/items/{id}/photo", id)).andExpect(status().isNotFound());
     }
 
     @Test

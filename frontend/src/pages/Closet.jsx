@@ -5,7 +5,7 @@ import ItemForm from '../components/ItemForm.jsx'
 import Modal from '../components/Modal.jsx'
 import { CATEGORIES, categoryLabel } from '../utils/format.js'
 
-export default function Closet({ notify }) {
+export default function Closet({ notify, canEdit = true }) {
   const [items, setItems] = useState([])
   const [category, setCategory] = useState(null)
   const [status, setStatus] = useState('loading') // loading | ready | error
@@ -78,9 +78,11 @@ export default function Closet({ notify }) {
             </p>
           )}
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setEditing({})}>
-          Add a piece
-        </button>
+        {canEdit && (
+          <button type="button" className="btn btn-primary" onClick={() => setEditing({})}>
+            Add a piece
+          </button>
+        )}
       </div>
 
       <div className="chips" role="group" aria-label="Filter by category">
@@ -109,11 +111,15 @@ export default function Closet({ notify }) {
           <p>
             {category
               ? `No ${categoryLabel(category).toLowerCase()} yet.`
-              : 'Your closet is empty. Add the first thing you thrifted.'}
+              : canEdit
+                ? 'Your closet is empty. Add the first thing you thrifted.'
+                : 'This closet is empty.'}
           </p>
-          <button type="button" className="btn btn-primary" onClick={() => setEditing({})}>
-            Add a piece
-          </button>
+          {canEdit && (
+            <button type="button" className="btn btn-primary" onClick={() => setEditing({})}>
+              Add a piece
+            </button>
+          )}
         </div>
       )}
 
@@ -127,6 +133,7 @@ export default function Closet({ notify }) {
               onUnwear={handleUnwear}
               onEdit={setEditing}
               onDelete={handleDelete}
+              canEdit={canEdit}
             />
           ))}
         </div>
