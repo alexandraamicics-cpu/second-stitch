@@ -1,6 +1,9 @@
-# Second Stitch
 
-![CI](https://github.com/YOUR-USERNAME/second-stitch/actions/workflows/ci.yml/badge.svg)
+   # Second Stitch
+
+  
+   **Live site:** [frontend-sigma-blond-89.vercel.app](https://frontend-sigma-blond-89.vercel.app)
+   *(The free server sleeps when it's idle, so the first load can take about a minute.)*
 
 A wardrobe tracker for thrifted clothes. Log each piece you find, build outfits from what you own, and see how much you've saved and what each piece costs per wear.
 
