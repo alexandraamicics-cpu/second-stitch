@@ -91,8 +91,13 @@ export default function AuthPage({ onAuthed, initialMode = 'login', initialMessa
       <div className="auth-intro">
         <h1>Track what you thrift.</h1>
         <p className="auth-tagline">
-          Log your finds, mix outfits from what you own, and see what every rewear saves you.
+          A wardrobe tracker for thrifted clothes.
         </p>
+        <ul className="auth-points">
+          <li>Log every find with its price, brand and photo</li>
+          <li>Build outfits from pieces you already own</li>
+          <li>See cost per wear and what thrifting saved you</li>
+        </ul>
       </div>
 
       <form className="auth-card" onSubmit={handleSubmit} noValidate aria-labelledby="auth-heading">

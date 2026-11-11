@@ -3,7 +3,7 @@ import { deleteItem, listItems, unwearItem, wearItem } from '../api.js'
 import HangTag from '../components/HangTag.jsx'
 import ItemForm from '../components/ItemForm.jsx'
 import Modal from '../components/Modal.jsx'
-import { CATEGORIES, categoryLabel } from '../utils/format.js'
+import { CATEGORIES, categoryLabel, formatMoney } from '../utils/format.js'
 
 export default function Closet({ notify, canEdit = true }) {
   const [items, setItems] = useState([])
@@ -25,6 +25,17 @@ export default function Closet({ notify, canEdit = true }) {
   useEffect(() => {
     load()
   }, [load])
+
+  // Totals for the summary tiles (whatever is in view, so they follow the filter)
+  const totals = items.reduce(
+    (sum, item) => ({
+      paid: sum.paid + (Number(item.pricePaid) || 0),
+      retail: sum.retail + (Number(item.estimatedRetail) || 0),
+      saved: sum.saved + (Number(item.savings) || 0),
+      wears: sum.wears + (Number(item.wearCount) || 0),
+    }),
+    { paid: 0, retail: 0, saved: 0, wears: 0 },
+  )
 
   // Replace one item in the list without refetching everything.
   const replace = (updated) => setItems((list) => list.map((i) => (i.id === updated.id ? updated : i)))
@@ -84,6 +95,27 @@ export default function Closet({ notify, canEdit = true }) {
           </button>
         )}
       </div>
+
+      {status === 'ready' && items.length > 0 && (
+        <dl className="kpis">
+          <div className="kpi">
+            <dt>You paid</dt>
+            <dd>{formatMoney(totals.paid)}</dd>
+          </div>
+          <div className="kpi">
+            <dt>Price new</dt>
+            <dd>{formatMoney(totals.retail)}</dd>
+          </div>
+          <div className="kpi">
+            <dt>Saved vs. buying new</dt>
+            <dd className="positive">{formatMoney(totals.saved)}</dd>
+          </div>
+          <div className="kpi">
+            <dt>Times worn</dt>
+            <dd>{totals.wears}</dd>
+          </div>
+        </dl>
+      )}
 
       <div className="chips" role="group" aria-label="Filter by category">
         <button type="button" className="chip" aria-pressed={category === null} onClick={() => setCategory(null)}>

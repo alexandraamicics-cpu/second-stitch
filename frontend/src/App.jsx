@@ -113,37 +113,52 @@ export default function App() {
     </p>
   )
 
-  // The yellow plaid band across the top of every screen. Tabs only once you're logged in.
-  const band = (tabs) => (
-    <header className="band plaid">
-      <div className="shell band-inner">
-        <Logo />
-        {tabs && (
-          <nav aria-label="Sections">
-            <ul className="tabs">
-              {TABS.map((t) => (
-                <li key={t.id}>
-                  <button
-                    type="button"
-                    className="tab"
-                    aria-current={tab === t.id ? 'page' : undefined}
-                    onClick={() => setTab(t.id)}
-                  >
-                    {t.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        )}
-      </div>
-    </header>
-  )
+  // The top bar on every screen (a thin plaid strip runs along its top edge).
+  // Sections and the account menu only show once you're logged in.
+  const topbar = (signedIn) => {
+    const shownName = user ? user.name || user.email : ''
+    return (
+      <header className="topbar">
+        <div className="shell topbar-inner">
+          <Logo />
+          {signedIn && (
+            <>
+              <nav aria-label="Sections" className="nav">
+                <ul className="tabs">
+                  {TABS.map((t) => (
+                    <li key={t.id}>
+                      <button
+                        type="button"
+                        className="tab"
+                        aria-current={tab === t.id ? 'page' : undefined}
+                        onClick={() => setTab(t.id)}
+                      >
+                        {t.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+              <div className="account">
+                <span className="avatar" aria-hidden="true">
+                  {shownName.charAt(0).toUpperCase()}
+                </span>
+                <span className="account-name">{shownName}</span>
+                <button type="button" className="btn btn-small btn-ghost" onClick={handleLogOut}>
+                  Log out
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </header>
+    )
+  }
 
   if (status === 'checking' || status === 'verifying') {
     return (
       <>
-        {band(false)}
+        {topbar(false)}
         <p className="quiet app-message">
           {status === 'verifying' ? 'Confirming your email…' : 'Opening your closet…'}
         </p>
@@ -154,7 +169,7 @@ export default function App() {
   if (resetCode) {
     return (
       <>
-        {band(false)}
+        {topbar(false)}
         <main id="main" className="shell">
           <ResetPasswordPage
             code={resetCode}
@@ -178,7 +193,7 @@ export default function App() {
   if (status === 'offline') {
     return (
       <>
-        {band(false)}
+        {topbar(false)}
         <div className="app-message empty" role="alert">
           <p>Can&apos;t reach the server. It may be waking up, which takes about a minute.</p>
           <button type="button" className="btn" onClick={checkSavedLogin}>
@@ -192,7 +207,7 @@ export default function App() {
   if (!user) {
     return (
       <>
-        {band(false)}
+        {topbar(false)}
         <main id="main" className="shell">
           <AuthPage
             key={authView.n}
@@ -211,16 +226,7 @@ export default function App() {
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      {band(true)}
-
-      <div className="shell account-bar">
-        <p>
-          Signed in as <strong>{user.name || user.email}</strong>
-        </p>
-        <button type="button" className="link-button" onClick={handleLogOut}>
-          Log out
-        </button>
-      </div>
+      {topbar(true)}
 
       {/* key: switching accounts starts every page fresh */}
       <main id="main" className="shell app" tabIndex="-1" key={user.id}>

@@ -9,11 +9,11 @@ export default function Logo() {
           x="50"
           y="62"
           textAnchor="middle"
-          fontFamily="Bricolage Grotesque, Segoe UI, sans-serif"
-          fontWeight="800"
+          fontFamily="Inter, Segoe UI, sans-serif"
+          fontWeight="700"
           fontSize="34"
           fill="#ffffff"
-          letterSpacing="-2"
+          letterSpacing="-1.5"
         >
           SS
         </text>
